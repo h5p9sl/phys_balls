@@ -8,4 +8,5 @@ edition = "2018"
 
 [dependencies]
 ggez = "0.5"
+specs = { version = "0.16", features = ["shred-derive"] }
 rand = "*"

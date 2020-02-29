@@ -1,62 +1,96 @@
-use ggez::graphics::*;
 use ggez::*;
 use rand::random;
+use specs::*;
+
+mod components;
+use crate::app::components::*;
 
 mod physball;
-use crate::app::physball::PhysBall;
+use crate::app::physball::*;
 
-pub struct App {
-    objects: Vec<PhysBall>,
+pub struct App<'a> {
+    world: specs::World,
+    dispatcher: specs::Dispatcher<'a, 'a>,
 }
 
-impl App {
-    pub fn new() -> Self {
-        let mut objects = Vec::new();
+impl App<'_> {
+    pub fn create_physball(&mut self) {
+        self.world
+            .create_entity()
+            .with(Position(random::<f32>() * 800.0, random::<f32>() * 600.0))
+            .with(Velocity(0.0, 0.0))
+            .with(Radius(random::<f32>() * 80.0 + 5.0))
+            .with(Color(ggez::graphics::Color::new(
+                random::<f32>(),
+                random::<f32>(),
+                random::<f32>(),
+                1.0,
+            )))
+            .build();
+    }
 
-        for i in 0..5 {
-            objects.push(PhysBall::new(
-                [random::<f64>() * 800.0, random::<f64>() * 600.0],
-                random::<f64>() * 50.0 + 5.0,
-            ));
+    pub fn new() -> Self {
+        let mut world = World::new();
+        world.register::<DeltaTime>();
+        world.register::<Position>();
+        world.register::<Velocity>();
+        world.register::<Radius>();
+        world.register::<Color>();
+
+        let dispatcher = DispatcherBuilder::new()
+            .with(GravitySystem, "gravity_sys", &[])
+            .with(VelocitySystem, "velocity_sys", &[])
+            .build();
+
+        let mut app = App { world, dispatcher };
+
+        for _i in 0..5 {
+            app.create_physball();
         }
-        App { objects }
+
+        app
     }
 }
 
-impl event::EventHandler for App {
+impl event::EventHandler for App<'_> {
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
         let delta = timer::duration_to_f64(timer::delta(ctx));
 
-        // Apply gravity to every object
-        for i in 0..self.objects.len() {
-            for j in 0..self.objects.len() {
-                if i == j {
-                    continue;
-                }
+        let dt = self
+            .world
+            .create_entity()
+            .with::<DeltaTime>(DeltaTime(delta))
+            .build();
+        self.dispatcher.dispatch(&mut self.world);
+        self.world.delete_entity(dt).unwrap();
 
-                let object = self.objects.get(i).unwrap();
-                let other = self.objects.get(j).unwrap();
-                let force = object.get_force(&other);
-                let angle = object.get_angle(&other);
-
-                let object = self.objects.get_mut(i).unwrap();
-                object.apply_force(force, angle);
-            }
-        }
-
-        // Update every object's position
-        for i in 0..self.objects.len() {
-            let object = self.objects.get_mut(i).unwrap();
-            object.update(delta);
-        }
+        self.world.maintain();
         Ok(())
     }
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         graphics::clear(ctx, graphics::BLACK);
 
-        for object in &mut self.objects {
-            object.draw(ctx);
-        }
+        // Iterate through all entites and draw them
+        self.world.exec(
+            |(pos, radius, color): (
+                ReadStorage<Position>,
+                ReadStorage<Radius>,
+                ReadStorage<Color>,
+            )| {
+                for (pos, radius, color) in (&pos, &radius, &color).join() {
+                    let circle = graphics::Mesh::new_circle(
+                        ctx,
+                        graphics::DrawMode::fill(),
+                        [pos.0, pos.1],
+                        radius.0,
+                        1.0,
+                        color.0,
+                    )
+                    .unwrap();
+                    graphics::draw(ctx, &circle, graphics::DrawParam::default()).unwrap();
+                }
+            },
+        );
 
         graphics::present(ctx)?;
         Ok(())
