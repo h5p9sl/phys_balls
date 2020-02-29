@@ -47,7 +47,6 @@ impl<'a> System<'a> for GravitySystem {
                 }
             }
 
-
             // Push our `force` vector to the array
             forces.push((ent1, force));
         }

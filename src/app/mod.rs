@@ -56,21 +56,25 @@ impl event::EventHandler for App<'_> {
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
         let delta = timer::duration_to_f64(timer::delta(ctx));
 
+        // Create an entity storing the delta time
         let dt = self
             .world
             .create_entity()
             .with::<DeltaTime>(DeltaTime(delta))
             .build();
-        self.dispatcher.dispatch(&mut self.world);
-        self.world.delete_entity(dt).unwrap();
 
+        // Dispatch all of our systems
+        self.dispatcher.dispatch(&mut self.world);
+        // Delete the delta time entity as it is no longer in use
+        self.world.delete_entity(dt).unwrap();
         self.world.maintain();
         Ok(())
     }
+
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         graphics::clear(ctx, graphics::BLACK);
 
-        // Iterate through all entites and draw them
+        // Iterate through all entites with a Position, Radius, and Color and draw them
         self.world.exec(
             |(pos, radius, color): (
                 ReadStorage<Position>,
@@ -78,6 +82,7 @@ impl event::EventHandler for App<'_> {
                 ReadStorage<Color>,
             )| {
                 for (pos, radius, color) in (&pos, &radius, &color).join() {
+                    // Create a circle mesh using our components
                     let circle = graphics::Mesh::new_circle(
                         ctx,
                         graphics::DrawMode::fill(),
@@ -87,6 +92,7 @@ impl event::EventHandler for App<'_> {
                         color.0,
                     )
                     .unwrap();
+                    // Draw the mesh
                     graphics::draw(ctx, &circle, graphics::DrawParam::default()).unwrap();
                 }
             },
