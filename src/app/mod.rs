@@ -5,8 +5,11 @@ use specs::*;
 mod components;
 use crate::app::components::*;
 
-mod physball;
-use crate::app::physball::*;
+mod velocitysystem;
+use crate::app::velocitysystem::*;
+
+mod gravitysystem;
+use crate::app::gravitysystem::*;
 
 pub struct App<'a> {
     world: specs::World,
