@@ -39,7 +39,7 @@ impl App<'_> {
 
         let dispatcher = DispatcherBuilder::new()
             .with(GravitySystem, "gravity_sys", &[])
-            .with(VelocitySystem, "velocity_sys", &[])
+            .with(VelocitySystem, "velocity_sys", &["gravity_sys"])
             .build();
 
         let mut app = App { world, dispatcher };
